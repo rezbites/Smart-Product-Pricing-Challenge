@@ -1,35 +1,79 @@
-## Smart Product Pricing Challenge
+Smart Product Pricing Challenge (Multimodal Ensemble)
 
-In e-commerce, determining the optimal price point for products is crucial for marketplace success and customer satisfaction. Your challenge is to develop an ML solution that analyzes product details and predict the price of the product. The relationship between product attributes and pricing is complex - with factors like brand, specifications, product quantity directly influence pricing. Your task is to build a model that can analyze these product details holistically and suggest an optimal price.
+This repository contains the solution for the Smart Product Pricing Challenge, which focuses on predicting optimal product prices using a complex dataset comprising structured metadata, unstructured text descriptions, and visual product images.
 
-### Data Description:
+Our approach leverages a Multimodal Stacking Ensemble combining the predictive power of Deep Learning (CNN, Transformer) with the speed and efficiency of Gradient Boosting (LightGBM).
 
-The dataset consists of the following columns:
+Technical Achievements
 
-1. **sample_id:** A unique identifier for the input sample
-2. **catalog_content:** Text field containing title, product description and an Item Pack Quantity(IPQ) concatenated.
-3. **image_link:** Public URL where the product image is available for download. 
-   Example link - https://m.media-amazon.com/images/I/71XfHPR36-L.jpg
-   To download images use `download_images` function from `src/utils.py`. See sample code in `src/test.ipynb`.
-4. **price:** Price of the product (Target variable - only available in training data)
+Multimodal Fusion: Implemented a stacking ensemble architecture that combines three distinct feature modalities: structured product data, visual features, and semantic text features.
 
-### Dataset Details:
+Visual Feature Extraction (CNN): Used Transfer Learning with TensorFlow/Keras and the EfficientNetB0 architecture to extract robust image features. Optimized training against GPU Out-of-Memory (OOM) errors by setting a low batch size and dynamically resizing inputs.
 
-- **Training Dataset:** 75k products with complete product details and prices
-- **Test Set:** 75k products for final evaluation
+Textual Feature Extraction (Transformer): Used a PyTorch backend to implement DistilBERT for semantic feature extraction from product descriptions, capturing contextual price signals.
+
+Final Meta-Learner: Trained a LightGBM Regressor on the concatenated feature matrix to determine the final price prediction, significantly improving upon single-model accuracy.
+
+Evaluation: The entire pipeline is optimized for the Symmetric Mean Absolute Percentage Error (SMAPE) metric.
+
+Project Structure
+
+Your current working directory should look like this:
+
+NEW FOLDER/
+├── dataset/
+│   ├── train.csv         (Raw training data)   
+├── images/               (Contains all product image files)
+├── src/
+│   ├── ensemble_model.py (FINAL MODEL: Stacking & Prediction)
+│   ├── sample_code.py    (CNN Model Training & Image Feature Extraction)
+│   └── textual_code.py   (Transformer Text Feature Extraction)
+├── best_cnn_model.h5     (Trained CNN Model Weights)
+├── cnn_image_features.npy  (Output: CNN Image Embeddings)
+├── text_features.npy     (Output: DistilBERT Text Embeddings)
+└── requirements.txt
 
 
-### File Descriptions:
+Setup and Installation
 
-*Source files*
+Due to known dependency conflicts between TensorFlow 2.5.0 and PyTorch 1.7.1 for older CUDA/NumPy versions, a specific set of packages must be used.
 
-1. **src/utils.py:** Contains helper functions for downloading images from the image_link. You may need to retry a few times to download all images due to possible throttling issues.
-2. **sample_code.py:** Sample dummy code that can generate an output file in the given format. Usage of this file is optional.
+Create and Activate Virtual Environment (Python 3.9 recommended):
 
-*Dataset files*
-
-1. **dataset/train.csv:** Training file with labels (`price`).
-2. **dataset/test.csv:** Test file without output labels (`price`). Generate predictions using your model/solution on this file's data and format the output file to match sample_test_out.csv
+python -m venv venv
+.\venv\Scripts\activate
 
 
+Install Required Dependencies:
 
+pip install -r requirements.txt
+
+
+Running the Pipeline
+
+The pipeline is designed to be run in three sequential steps. Each step saves its output as a file, which the next step consumes.
+
+Step 1: Extract Text Features (DistilBERT)
+
+This script loads train.csv and uses the Transformer model to generate text embeddings.
+
+# This will generate text_features.npy and structured_data_with_text_features.csv
+python src/textual_code.py
+
+
+Step 2: Extract Image Features (EfficientNetB0)
+
+This script trains the CNN (if best_cnn_model.h5 is missing) and extracts the image embeddings.
+
+# This will generate best_cnn_model.h5 (if training) and cnn_image_features.npy
+python src/sample_code.py
+
+
+(Note: If training fails due to OOM, reduce IMAGE_SIZE in sample_code.py to (128, 128) or (96, 96).)
+
+Step 3: Train Final Ensemble Model (LightGBM)
+
+This script loads all three feature files (.npy and CSV), combines them, trains the final LightGBM model, and reports the final validation SMAPE score.
+
+# This will train the final stacking model and output the performance metric.
+python src/ensemble_model.py
